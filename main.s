@@ -155,8 +155,6 @@ print_break:
     syscall # Print the endline
     jr $ra
 
-
-
 __start:
     li $a0, 8 # number of bytes to allocate
     li $a1, 0x4000000f # Initial value
@@ -190,6 +188,29 @@ test2:
     move $a0, $s2
     jal big_print
 
+    move $a0, $s2
+    move $a1, $s2
+    move $a2, $s0
+    jal big_sum
+
+    move $a0, $s0
+    jal big_print
+
+    li $t5, 0
+    li $t6, 32
+loop:
+    move $a0, $s0
+    move $a1, $s0
+    move $a2, $s0
+    jal big_sum
+
+    move $a0, $s0
+    jal big_print
+    bge $t5, $t6, exit
+    addi $t5, 1
+    j loop
+
+exit:
     # Exit
     li $v0, 10
     syscall
