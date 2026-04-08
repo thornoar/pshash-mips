@@ -3,7 +3,8 @@ sourceLower: .asciiz "ckapzfitqdxnwehrolmbyvsujg"
 sourceUpper: .asciiz "RQLIANBKJYVWPTEMCZSFDOGUHX"
 sourceSpecial: .asciiz "=!*@?$%#&-+^"
 sourceNumbers: .asciiz "1952074386"
-newline_str: .asciiz "\n"
+newline_str: .asciiz "/\n"
+colon_str: .asciiz ":"
 
 # Big integers are stored as blocks of words in memory,
 # where each byte is one digit of a number in base-2^31.
@@ -96,58 +97,82 @@ return:
     jr $ra
 
 # Arguments:
-#   $a0: number of bytes to allocate
+#   $a0: number of words to allocate
+#   $a1: the initial word
 # Returns:
 #   $v0: the address of the allocated and initialized number
 big_alloc:
-    li $v0, 9
+    sll $a0, $a0, 2 # Multiplying by 4 to get the number of bytes
+    li $v0, 9 # Memory allocation syscall
     syscall
+    move $t0, $v0 # Save the current address
+    add $t1, $v0, $a0
+    addi $t1, $t1, -4 # Save the final address
+    sw $a1, 0($t0) # Store the first word of the number
+alloc_loop:
+    addi $t0, $t0, 4 # Move the address to the next word
+    beq $t0, $t1, alloc_break
+    sw $zero, 0($t0)
+    j alloc_loop
+alloc_break:
+    li $t0, 0xffffffff # Load the terminator value
+    sw $t0, 0($t1) # Store the value at the last address
     jr $ra
 
 # Arguments:
 #   $a0: the address of the big number to print
-#   $a3: the final address
 big_print:
-    
+    li $v0, 1 # Print int syscall
+    li $t0, 0xffffffff # Terminator value
+    move $t1, $a0 # Save the current address
+print_loop:
+    lw $a0, 0($t1) # Load the current digit
+    beq $a0, $t0, print_break
+    li $v0, 1 # Print int syscall
+    syscall # Print the current digit
+    li $v0, 4 # Print string syscall
+    la $a0, colon_str
+    syscall # Print a colon separator
+    addi $t1, $t1, 4 # Move to the next digit
+    j print_loop # Next loop iteration
+print_break:
+    la $a0, newline_str
+    syscall # Print the endline
+    jr $ra
 
 __start:
-    li $a0, 256 # number of bytes to allocate
+    li $a0, 8 # number of bytes to allocate
+    li $a1, 50 # Initial value
     jal big_alloc
     move $s0, $v0 # Save the address of the first number
+
+    li $a0, 8 # number of bytes to allocate
+    li $a1, 75 # Initial value
     jal big_alloc
     move $s1, $v0 # Save the address of the second number
+
+    li $a0, 8 # number of bytes to allocate
+    li $a1, 0 # Initial value
     jal big_alloc
     move $s2, $v0 # Save the address of the third number
 
 test:
-
-    # Initialize the first number
     move $a0, $s0
-    li $a1, 45
-    move $a3, $zero
-    jal big_init
+    jal big_print
 
-    # Initialize the second number
     move $a0, $s1
-    li $a1, 100
-    move $a3, $zero
-    jal big_init
+    jal big_print
 
-    li $v0, 1
-    lw $a0, 0($s1)
-    syscall
-
-
-    # Calculate the sum
-    move $a0, $s0
-    move $a1, $s1
-    move $a2, $s2
-    move $a3, $zero
-    jal big_sum
-
-    lw $a0, 0($s2)
-    li $v0, 1
-    syscall
+    # # Calculate the sum
+    # move $a0, $s0
+    # move $a1, $s1
+    # move $a2, $s2
+    # move $a3, $zero
+    # jal big_sum
+    #
+    # lw $a0, 0($s2)
+    # li $v0, 1
+    # syscall
 
     # Exit
     li $v0, 10
