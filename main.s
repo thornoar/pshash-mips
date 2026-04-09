@@ -14,20 +14,7 @@ colon_str: .asciiz ":"
 
 .text
 .globl __start
-.globl test
 .globl test2
-
-# # Arguments:
-# #   $a0: address of the number to initialize
-# #   $a1: the integer value to initialize with
-# big_init:
-#     li $t0, 64
-#     bgeu $a3, $t0, return # Check if all the digits have already been initialized
-#     sw $a1, 0($a0) # Initialize the first digit
-#     addi $a0, $a0, 4 # Moving to the next digit
-#     addi $a3, $a3, 1 # Increasing the counter
-#     move $a1, $zero # Setting all other digits to zero
-#     j big_init # Recursive call
 
 # Instruction to jump to the return address
 return:
@@ -96,15 +83,19 @@ sum_if_carryover:
     sw $a0, 0($sp) # Store $a0 on the stack
     addi $sp, $sp, -4 # Allocate 4 bytes on the stack
     sw $a1, 0($sp) # Store $a1 on the stack
-    move $a1, $a0 # $a1 := $a0
-    jal big_increment # Increment the first summand due to overflow
+    addi $sp, $sp, -4 # Allocate 4 bytes on the stack
+    sw $a2, 0($sp) # Store $a2 on the stack
+    jal big_sum # Recursive call
+    lw $a2, 0($sp) # Load back $a2
+    addi $sp, $sp, 4 # Move the stack pointer up 
     lw $a1, 0($sp) # Load back $a1
     addi $sp, $sp, 4 # Move the stack pointer up 
     lw $a0, 0($sp) # Load back $a0
     addi $sp, $sp, 4 # Move the stack pointer up
     lw $ra, 0($sp) # Load back the return address
     addi $sp, $sp, 4 # Move the stack pointer up
-    j big_sum # Recursive call
+    move $a1, $a0 # $a1 := $a0
+    j big_increment # Increment due to carryover
 sum_copy_rest_snd:
     move $a0, $a1
 sum_copy_rest_fst:
@@ -157,56 +148,49 @@ print_break:
 
 __start:
     li $a0, 8 # number of bytes to allocate
-    li $a1, 0x4000000f # Initial value
+    li $a1, 165 # Initial value
     jal big_alloc
     move $s0, $v0 # Save the address of the first number
 
     li $a0, 8 # number of bytes to allocate
-    li $a1, 0x40000000 # Initial value
+    li $a1, 0 # Initial value
     jal big_alloc
     move $s1, $v0 # Save the address of the second number
 
-    li $a0, 8 # number of bytes to allocate
-    li $a1, 0 # Initial value
-    jal big_alloc
-    move $s2, $v0 # Save the address of the third number
+    # li $a0, 8 # number of bytes to allocate
+    # li $a1, 0 # Initial value
+    # jal big_alloc
+    # move $s2, $v0 # Save the address of the third number
 
     move $a0, $s0
     jal big_print
 
-    move $a0, $s1
-    jal big_print
+    # move $a0, $s1
+    # jal big_print
 
-test:
-    # Calculate the sum
-    move $a0, $s0
-    move $a1, $s1
-    move $a2, $s2
-    jal big_sum
+# test:
+#     # Calculate the sum
+#     move $a0, $s0
+#     move $a1, $s1
+#     move $a2, $s2
+#     jal big_sum
 
 test2:
-    move $a0, $s2
-    jal big_print
-
-    move $a0, $s2
-    move $a1, $s2
-    move $a2, $s0
-    jal big_sum
-
-    move $a0, $s0
-    jal big_print
-
     li $t5, 0
-    li $t6, 32
+    li $t6, 60
 loop:
+    bge $t5, $t6, exit
     move $a0, $s0
     move $a1, $s0
+    move $a2, $s1
+    jal big_sum
+    move $a0, $s0
+    move $a1, $s1
     move $a2, $s0
     jal big_sum
 
     move $a0, $s0
     jal big_print
-    bge $t5, $t6, exit
     addi $t5, 1
     j loop
 
