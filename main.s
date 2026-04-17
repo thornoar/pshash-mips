@@ -13,7 +13,7 @@ colon_str: .asciiz ":"
 # 0xffffffff
 
 .text
-.globl __start
+.globl main
 .globl test2
 
 # Instruction to jump to the return address
@@ -60,8 +60,8 @@ big_sum:
     lw $t0, 0($a0) # Load the first digit of $a0
     lw $t1, 0($a1) # Load the first digit of $a1
     li $t2, 0xffffffff # Load the terminal value
-    beq $t1, $t2, sum_copy_rest_fst # Check if it's the end of $a1
-    beq $t0, $t2, sum_copy_rest_snd # Check if it's the end of $a0
+    beq $t1, $t2, copy_rest_fst # Check if it's the end of $a1
+    beq $t0, $t2, copy_rest_snd # Check if it's the end of $a0
     addu $t2, $t0, $t1 # Add the first digits, store them in $t2
     xor $t3, $t3, $t3 # Set $t3 to zero
     lui $t3, 0x8000 # Load the binary value 2^31 in $t3
@@ -96,11 +96,31 @@ sum_if_carryover:
     addi $sp, $sp, 4 # Move the stack pointer up
     move $a1, $a0 # $a1 := $a0
     j big_increment # Increment due to carryover
-sum_copy_rest_snd:
+
+# Arguments:
+#   $a0: address of the multiplicand
+#   $a1: the multiplier
+#   $a2: address of the result
+big_mult_digit:
+    
+
+# Arguments:
+#   $a0: address of the multiplicand
+#   $a1: address of the multiplier
+#   $a2: address of the result
+big_mult:
+    lw $t0, 0($a0) # Load the first digit of $a0
+    lw $t1, 0($a1) # Load the first digit of $a1
+    li $t2, 0xffffffff # Load the terminal value
+    beq $t1, $t2, copy_rest_fst # Check if it's the end of $a1
+    beq $t0, $t2, copy_rest_snd # Check if it's the end of $a0
+
+copy_rest_snd:
     move $a0, $a1
-sum_copy_rest_fst:
+copy_rest_fst:
     move $a1, $a2
     j big_copy
+    
 
 # Arguments:
 #   $a0: number of words to allocate
@@ -146,7 +166,13 @@ print_break:
     syscall # Print the endline
     jr $ra
 
-__start:
+main:
+    li $t0, 0x7fffffff
+    li $t1, 0x7fffffff
+    mult $t0, $t1
+    mflo $t2
+    mfhi $t3
+
     li $a0, 8 # number of bytes to allocate
     li $a1, 165 # Initial value
     jal big_alloc
